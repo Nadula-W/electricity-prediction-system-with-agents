@@ -1,0 +1,3 @@
+[submodule "sources/smart-electricity-system"]
+	path = sources/smart-electricity-system
+	url = https://github.com/Nadula-W/smart-electricity-system.git
