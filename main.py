@@ -1,39 +1,41 @@
 import json
 
-from agent.tools import (
-    list_services,
-    get_service_status
-)
+from agent.tools import list_services, get_service_status
+
+
+def print_title(title):
+    print("\n" + "=" * 60)
+    print(title)
+    print("=" * 60)
 
 
 def main():
 
-    print("\nAI SRE Incident Agent")
-    print("=" * 50)
+    print_title("AI SRE Incident Agent")
 
-    services = list_services()
+    # ---------------------------------------------------------
+    # 1. Show all services configured in agent/tools.py
+    # ---------------------------------------------------------
+
+    services_result = list_services()
 
     print("\nConfigured Services:")
-    print(
-        json.dumps(
-            services,
-            indent=2
-        )
-    )
+    print(json.dumps(services_result, indent=2))
 
-    print("\nService Health")
-    print("=" * 50)
+    services = services_result.get("services", [])
 
-    for service in services["services"]:
+    # ---------------------------------------------------------
+    # 2. Check every service
+    # ---------------------------------------------------------
 
-        result = get_service_status(service)
+    print_title("Service Health")
 
-        print(
-            json.dumps(
-                result,
-                indent=2
-            )
-        )
+    for service_name in services:
+
+        result = get_service_status(service_name)
+
+        print(json.dumps(result, indent=2))
+        print("-" * 60)
 
 
 if __name__ == "__main__":
