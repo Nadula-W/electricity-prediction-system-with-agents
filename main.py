@@ -1,6 +1,10 @@
 import json
 
-from agent.tools import list_services, get_service_status
+from agent.tools import (
+    list_services,
+    get_service_status,
+    diagnose_service,
+)
 
 
 def print_title(title):
@@ -14,7 +18,8 @@ def main():
     print_title("AI SRE Incident Agent")
 
     # ---------------------------------------------------------
-    # 1. Show all services configured in agent/tools.py
+    # STEP 1
+    # Get all services configured in agent/tools.py
     # ---------------------------------------------------------
 
     services_result = list_services()
@@ -25,16 +30,32 @@ def main():
     services = services_result.get("services", [])
 
     # ---------------------------------------------------------
-    # 2. Check every service
+    # STEP 2
+    # Check health of every service
     # ---------------------------------------------------------
 
     print_title("Service Health")
 
     for service_name in services:
 
-        result = get_service_status(service_name)
+        status_result = get_service_status(service_name)
 
-        print(json.dumps(result, indent=2))
+        print(json.dumps(status_result, indent=2))
+
+        # -----------------------------------------------------
+        # STEP 3
+        # If the service is not healthy,
+        # perform another investigation.
+        # -----------------------------------------------------
+
+        if status_result.get("status") != "healthy":
+
+            print("\nInvestigation:")
+
+            diagnosis_result = diagnose_service(service_name)
+
+            print(json.dumps(diagnosis_result, indent=2))
+
         print("-" * 60)
 
 
