@@ -1,0 +1,9 @@
+
+============================================================
+STARTING prediction-service
+============================================================
+◇ injected env (7) from .env // tip: ⌁ auth for agents [www.vestauth.com]
+◇ injected env (0) from .env // tip: ◈ secrets for agents [www.dotenvx.com]
+Prediction Service Running
+Prediction DB Connected
+Predictions table is ready

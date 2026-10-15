@@ -1,0 +1,7 @@
+
+============================================================
+STARTING meter-data-service
+============================================================
+◇ injected env (2) from .env // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+Meter Data Service running on port 3000
+Meter DB connected

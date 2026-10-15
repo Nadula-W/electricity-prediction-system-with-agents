@@ -25,3 +25,12 @@ STARTING billing-service
 RabbitMQ connection failed, starting without messaging: 
 Billing Service running on port 3001
 Billing DB connected
+
+============================================================
+STARTING billing-service
+============================================================
+◇ injected env (5) from .env // tip: ⌁ auth for agents [www.vestauth.com]
+◇ injected env (0) from .env // tip: ⌘ override existing { override: true }
+Billing DB connected
+RabbitMQ connection failed, starting without messaging: 
+Billing Service running on port 3001

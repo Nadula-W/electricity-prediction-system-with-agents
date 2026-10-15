@@ -11,20 +11,21 @@ from flask import (
     request,
 )
 
+from agent.actions import (
+    start_service,
+    stop_service,
+)
+
+from agent.sre_agent import (
+    run_sre_agent,
+)
+
 from agent.tools import (
     list_services,
     get_service_status,
     get_service_logs,
     check_service_dependencies,
     check_mysql_database,
-)
-
-from agent.actions import (
-    start_service,
-)
-
-from agent.sre_agent import (
-    run_sre_agent,
 )
 
 
@@ -36,7 +37,7 @@ load_dotenv()
 
 
 # ============================================================
-# FLASK APPLICATION
+# FLASK
 # ============================================================
 
 app = Flask(
@@ -47,33 +48,92 @@ app = Flask(
 
 
 # ============================================================
-# SERVICE DISPLAY INFORMATION
+# SERVICE INFORMATION
 # ============================================================
 
 SERVICE_INFO = {
 
     "meter-data-service": {
-        "title": "Meter Data",
+
+        "display_name": "Meter Data Service",
+
+        "short_name": "Meter Data",
+
         "port": 3000,
-        "description": "Electricity usage readings",
+
+        "technology": "Node.js / Express",
+
+        "database": "MongoDB",
+
+        "description": (
+            "Collects and stores electricity meter "
+            "readings used by Billing and Prediction."
+        ),
+
+        "mysql": False,
     },
+
 
     "billing-service": {
-        "title": "Billing",
+
+        "display_name": "Billing Service",
+
+        "short_name": "Billing",
+
         "port": 3001,
-        "description": "Electricity billing engine",
+
+        "technology": "Node.js / Express",
+
+        "database": "MySQL · billing_db",
+
+        "description": (
+            "Uses electricity consumption data to "
+            "generate customer electricity bills."
+        ),
+
+        "mysql": True,
     },
+
 
     "prediction-service": {
-        "title": "Prediction",
+
+        "display_name": "Prediction Service",
+
+        "short_name": "Prediction",
+
         "port": 3002,
-        "description": "Consumption forecasting",
+
+        "technology": "Node.js / Express",
+
+        "database": "MySQL · prediction_db",
+
+        "description": (
+            "Analyzes previous electricity usage and "
+            "predicts future energy consumption."
+        ),
+
+        "mysql": True,
     },
 
+
     "user-service": {
-        "title": "User Service",
+
+        "display_name": "User Service",
+
+        "short_name": "Users",
+
         "port": 8081,
-        "description": "Customer and user management",
+
+        "technology": "Spring Boot",
+
+        "database": "MySQL · user_db",
+
+        "description": (
+            "Manages system users, customer accounts "
+            "and user information."
+        ),
+
+        "mysql": True,
     },
 }
 
@@ -82,29 +142,49 @@ SERVICE_INFO = {
 # SERVICE URLS
 # ============================================================
 
-METER_SERVICE_URL = os.getenv(
+METER_URL = os.getenv(
     "METER_SERVICE_URL",
     "http://localhost:3000",
 )
 
-BILLING_SERVICE_URL = os.getenv(
+BILLING_URL = os.getenv(
     "BILLING_SERVICE_URL",
     "http://localhost:3001",
 )
 
-PREDICTION_SERVICE_URL = os.getenv(
+PREDICTION_URL = os.getenv(
     "PREDICTION_SERVICE_URL",
     "http://localhost:3002",
 )
 
-USER_SERVICE_URL = os.getenv(
+USER_URL = os.getenv(
     "USER_SERVICE_URL",
     "http://localhost:8081",
 )
 
 
+DATA_ENDPOINTS = {
+
+    "usage":
+        METER_URL
+        + "/api/usage",
+
+    "bills":
+        BILLING_URL
+        + "/api/bills",
+
+    "predictions":
+        PREDICTION_URL
+        + "/api/predictions",
+
+    "users":
+        USER_URL
+        + "/api/users",
+}
+
+
 # ============================================================
-# HOME PAGE
+# HOME
 # ============================================================
 
 @app.route("/")
@@ -116,7 +196,7 @@ def home():
 
 
 # ============================================================
-# SYSTEM STATUS API
+# SYSTEM STATUS
 # ============================================================
 
 @app.route(
@@ -125,93 +205,504 @@ def home():
 )
 def system_status():
 
-    service_names = list_services().get(
-        "services",
-        []
+    configured_services = (
+        list_services()
+        .get(
+            "services",
+            []
+        )
     )
 
-    results = []
+    services = []
 
     healthy_count = 0
 
 
-    for service_name in service_names:
+    for service_name in configured_services:
 
         status = get_service_status(
             service_name
         )
 
-        if status.get("status") == "healthy":
+        if (
+            status.get("status")
+            == "healthy"
+        ):
 
             healthy_count += 1
 
 
-        display = SERVICE_INFO.get(
+        info = SERVICE_INFO.get(
             service_name,
             {}
         )
 
 
-        results.append(
+        services.append(
             {
+
                 **status,
 
-                "title": display.get(
-                    "title",
-                    service_name
-                ),
+                "display_name":
+                    info.get(
+                        "display_name",
+                        service_name
+                    ),
 
-                "description": display.get(
-                    "description",
-                    ""
-                ),
+                "short_name":
+                    info.get(
+                        "short_name",
+                        service_name
+                    ),
 
-                "port": display.get(
-                    "port"
-                ),
+                "port":
+                    info.get(
+                        "port"
+                    ),
+
+                "technology":
+                    info.get(
+                        "technology",
+                        ""
+                    ),
+
+                "database":
+                    info.get(
+                        "database",
+                        ""
+                    ),
+
+                "description":
+                    info.get(
+                        "description",
+                        ""
+                    ),
+
+                "mysql":
+                    info.get(
+                        "mysql",
+                        False
+                    ),
             }
         )
 
 
-    total_services = len(
-        results
+    total = len(
+        services
     )
 
-
-    problem_count = (
-        total_services
+    incidents = (
+        total
         - healthy_count
     )
 
 
-    if problem_count == 0:
-
-        overall_status = "healthy"
-
-    else:
-
-        overall_status = "incident"
-
-
     return jsonify(
         {
-            "status": overall_status,
+
+            "status":
+                "healthy"
+                if incidents == 0
+                else "incident",
+
+            "total": total,
 
             "healthy": healthy_count,
 
-            "problems": problem_count,
+            "incidents": incidents,
 
-            "total": total_services,
+            "services": services,
 
-            "services": results,
-
-            "updated_at": datetime.now().isoformat(),
+            "updated_at":
+                datetime.now()
+                .isoformat(),
         }
     )
 
 
 # ============================================================
-# AI AGENT API
+# START SERVICE
+# ============================================================
+
+@app.route(
+    "/api/service/<service_name>/start",
+    methods=["POST"]
+)
+def api_start_service(
+    service_name
+):
+
+    return jsonify(
+        start_service(
+            service_name
+        )
+    )
+
+
+# ============================================================
+# STOP SERVICE
+# ============================================================
+
+@app.route(
+    "/api/service/<service_name>/stop",
+    methods=["POST"]
+)
+def api_stop_service(
+    service_name
+):
+
+    return jsonify(
+        stop_service(
+            service_name
+        )
+    )
+
+
+# ============================================================
+# LOGS
+# ============================================================
+
+@app.route(
+    "/api/service/<service_name>/logs",
+    methods=["GET"]
+)
+def api_logs(
+    service_name
+):
+
+    lines = request.args.get(
+        "lines",
+        100
+    )
+
+
+    return jsonify(
+        get_service_logs(
+            service_name,
+            lines
+        )
+    )
+
+
+# ============================================================
+# DEPENDENCIES
+# ============================================================
+
+@app.route(
+    "/api/service/<service_name>/dependencies",
+    methods=["GET"]
+)
+def api_dependencies(
+    service_name
+):
+
+    return jsonify(
+        check_service_dependencies(
+            service_name
+        )
+    )
+
+
+# ============================================================
+# MYSQL TEST
+# ============================================================
+
+@app.route(
+    "/api/service/<service_name>/mysql",
+    methods=["GET"]
+)
+def api_mysql(
+    service_name
+):
+
+    return jsonify(
+        check_mysql_database(
+            service_name
+        )
+    )
+
+
+# ============================================================
+# SANITIZE DATA FOR UI
+# ============================================================
+
+def sanitize_value(
+    value
+):
+
+    if isinstance(
+        value,
+        list
+    ):
+
+        return [
+            sanitize_value(
+                item
+            )
+            for item
+            in value
+        ]
+
+
+    if isinstance(
+        value,
+        dict
+    ):
+
+        safe = {}
+
+
+        blocked_fields = {
+            "password",
+            "token",
+            "access_token",
+            "refresh_token",
+            "api_key",
+            "apikey",
+            "secret",
+        }
+
+
+        for key, item in value.items():
+
+            if (
+                str(key).lower()
+                in blocked_fields
+            ):
+
+                continue
+
+
+            safe[key] = sanitize_value(
+                item
+            )
+
+
+        return safe
+
+
+    return value
+
+
+# ============================================================
+# FETCH DATASET
+# ============================================================
+
+def fetch_dataset(
+    dataset
+):
+
+    if dataset not in DATA_ENDPOINTS:
+
+        return {
+            "success": False,
+            "error": "Unknown dataset.",
+        }
+
+
+    url = DATA_ENDPOINTS[
+        dataset
+    ]
+
+
+    try:
+
+        response = requests.get(
+            url,
+            timeout=5
+        )
+
+
+        response.raise_for_status()
+
+
+        raw_data = response.json()
+
+
+        safe_data = sanitize_value(
+            raw_data
+        )
+
+
+        return {
+            "success": True,
+            "dataset": dataset,
+            "data": safe_data,
+        }
+
+
+    except Exception as error:
+
+        return {
+            "success": False,
+            "dataset": dataset,
+            "error": str(
+                error
+            ),
+        }
+
+
+# ============================================================
+# DATASET API
+# ============================================================
+
+@app.route(
+    "/api/data/<dataset>",
+    methods=["GET"]
+)
+def api_data(
+    dataset
+):
+
+    result = fetch_dataset(
+        dataset
+    )
+
+
+    status_code = (
+        200
+        if result.get(
+            "success"
+        )
+        else 503
+    )
+
+
+    return jsonify(
+        result
+    ), status_code
+
+
+# ============================================================
+# DATA SUMMARY
+# ============================================================
+
+def extract_count(
+    data
+):
+
+    if isinstance(
+        data,
+        list
+    ):
+
+        return len(
+            data
+        )
+
+
+    if isinstance(
+        data,
+        dict
+    ):
+
+        keys = [
+
+            "data",
+            "items",
+            "users",
+            "bills",
+            "predictions",
+            "usage",
+            "records",
+        ]
+
+
+        for key in keys:
+
+            value = data.get(
+                key
+            )
+
+            if isinstance(
+                value,
+                list
+            ):
+
+                return len(
+                    value
+                )
+
+
+        if isinstance(
+            data.get(
+                "count"
+            ),
+            int
+        ):
+
+            return data[
+                "count"
+            ]
+
+
+        return 1
+
+
+    return 0
+
+
+@app.route(
+    "/api/data-summary",
+    methods=["GET"]
+)
+def data_summary():
+
+    output = {}
+
+
+    for dataset in [
+
+        "usage",
+        "bills",
+        "predictions",
+        "users",
+
+    ]:
+
+        result = fetch_dataset(
+            dataset
+        )
+
+
+        if result.get(
+            "success"
+        ):
+
+            output[
+                dataset
+            ] = {
+
+                "available": True,
+
+                "count":
+                    extract_count(
+                        result.get(
+                            "data"
+                        )
+                    ),
+            }
+
+
+        else:
+
+            output[
+                dataset
+            ] = {
+
+                "available": False,
+
+                "count": 0,
+            }
+
+
+    return jsonify(
+        output
+    )
+
+
+# ============================================================
+# AI AGENT
 # ============================================================
 
 @app.route(
@@ -238,7 +729,8 @@ def agent_request():
         return jsonify(
             {
                 "success": False,
-                "error": "Message is required.",
+                "error":
+                    "Message is required."
             }
         ), 400
 
@@ -271,281 +763,15 @@ def agent_request():
 
 
 # ============================================================
-# SERVICE LOG API
-# ============================================================
-
-@app.route(
-    "/api/service/<service_name>/logs",
-    methods=["GET"]
-)
-def service_logs(
-    service_name
-):
-
-    lines = request.args.get(
-        "lines",
-        60
-    )
-
-
-    result = get_service_logs(
-        service_name,
-        lines
-    )
-
-
-    return jsonify(
-        result
-    )
-
-
-# ============================================================
-# SERVICE DEPENDENCY API
-# ============================================================
-
-@app.route(
-    "/api/service/<service_name>/dependencies",
-    methods=["GET"]
-)
-def service_dependencies(
-    service_name
-):
-
-    result = check_service_dependencies(
-        service_name
-    )
-
-
-    return jsonify(
-        result
-    )
-
-
-# ============================================================
-# MYSQL CHECK API
-# ============================================================
-
-@app.route(
-    "/api/service/<service_name>/mysql",
-    methods=["GET"]
-)
-def service_mysql(
-    service_name
-):
-
-    result = check_mysql_database(
-        service_name
-    )
-
-
-    return jsonify(
-        result
-    )
-
-
-# ============================================================
-# CONTROLLED SERVICE RECOVERY
-# ============================================================
-
-@app.route(
-    "/api/service/<service_name>/recover",
-    methods=["POST"]
-)
-def recover_service(
-    service_name
-):
-
-    result = start_service(
-        service_name
-    )
-
-
-    return jsonify(
-        result
-    )
-
-
-# ============================================================
-# HELPER
-# FETCH DATA FROM MICROSERVICE
-# ============================================================
-
-def fetch_json(
-    url
-):
-
-    try:
-
-        response = requests.get(
-            url,
-            timeout=3
-        )
-
-
-        if response.status_code != 200:
-
-            return {
-                "available": False,
-                "count": 0,
-            }
-
-
-        data = response.json()
-
-
-        if isinstance(
-            data,
-            list
-        ):
-
-            count = len(
-                data
-            )
-
-
-        elif isinstance(
-            data,
-            dict
-        ):
-
-            count = None
-
-
-            possible_lists = [
-
-                "data",
-                "items",
-                "users",
-                "bills",
-                "predictions",
-                "usage",
-                "records",
-            ]
-
-
-            for key in possible_lists:
-
-                value = data.get(
-                    key
-                )
-
-                if isinstance(
-                    value,
-                    list
-                ):
-
-                    count = len(
-                        value
-                    )
-
-                    break
-
-
-            if count is None:
-
-                count = data.get(
-                    "count",
-                    1
-                )
-
-
-        else:
-
-            count = 0
-
-
-        return {
-            "available": True,
-            "count": count,
-        }
-
-
-    except Exception:
-
-        return {
-            "available": False,
-            "count": 0,
-        }
-
-
-# ============================================================
-# DEMO DATA SUMMARY
-# ============================================================
-
-@app.route(
-    "/api/data-summary",
-    methods=["GET"]
-)
-def data_summary():
-
-    usage = fetch_json(
-        (
-            METER_SERVICE_URL
-            + "/api/usage"
-        )
-    )
-
-
-    bills = fetch_json(
-        (
-            BILLING_SERVICE_URL
-            + "/api/bills"
-        )
-    )
-
-
-    predictions = fetch_json(
-        (
-            PREDICTION_SERVICE_URL
-            + "/api/predictions"
-        )
-    )
-
-
-    users = fetch_json(
-        (
-            USER_SERVICE_URL
-            + "/api/users"
-        )
-    )
-
-
-    return jsonify(
-        {
-            "meter_readings": usage,
-
-            "bills": bills,
-
-            "predictions": predictions,
-
-            "users": users,
-        }
-    )
-
-
-# ============================================================
-# RUN DASHBOARD
+# RUN
 # ============================================================
 
 if __name__ == "__main__":
 
     print()
-    print(
-        "=" * 60
-    )
 
     print(
-        "AI SRE Command Center"
-    )
-
-    print(
-        "=" * 60
-    )
-
-    print()
-
-    print(
-        "Dashboard:"
+        "Smart Electricity AI SRE Showcase"
     )
 
     print(

@@ -1,16 +1,15 @@
-let systemState = null;
-
 let agentBusy = false;
 
 
-
 // ============================================================
-// BASIC HELPERS
+// HTML ESCAPE
 // ============================================================
 
 function escapeHtml(value) {
 
-    return String(value)
+    return String(
+        value ?? ""
+    )
 
         .replaceAll(
             "&",
@@ -39,28 +38,95 @@ function escapeHtml(value) {
 }
 
 
+// ============================================================
+// NORMALIZE API DATA
+// ============================================================
+
+function normalizeRows(
+    data
+) {
+
+    if (
+        Array.isArray(
+            data
+        )
+    ) {
+
+        return data;
+    }
+
+
+    if (
+        data
+        &&
+        typeof data === "object"
+    ) {
+
+        const possibleKeys = [
+
+            "data",
+            "items",
+            "users",
+            "bills",
+            "predictions",
+            "usage",
+            "records",
+        ];
+
+
+        for (
+            const key
+            of possibleKeys
+        ) {
+
+            if (
+                Array.isArray(
+                    data[key]
+                )
+            ) {
+
+                return data[
+                    key
+                ];
+            }
+        }
+
+
+        return [
+            data
+        ];
+    }
+
+
+    return [];
+}
+
 
 // ============================================================
-// SYSTEM REFRESH
+// SYSTEM
 // ============================================================
 
-async function refreshSystem() {
+async function loadSystem() {
 
     try {
 
-        const response = await fetch(
-            "/api/system"
+        const response =
+            await fetch(
+                "/api/system"
+            );
+
+
+        const data =
+            await response.json();
+
+
+        renderSummary(
+            data
         );
 
 
-        const data = await response.json();
-
-
-        systemState = data;
-
-
-        renderSystem(
-            data
+        renderServices(
+            data.services
         );
 
     }
@@ -70,142 +136,169 @@ async function refreshSystem() {
         console.error(
             error
         );
-
     }
-
 }
 
 
-
 // ============================================================
-// RENDER SYSTEM
+// SUMMARY
 // ============================================================
 
-function renderSystem(data) {
+function renderSummary(
+    data
+) {
 
-    const badge = document.getElementById(
-        "systemBadge"
-    );
-
-
-    const serviceCount = document.getElementById(
-        "serviceCount"
-    );
-
-
-    const healthyCount = document.getElementById(
-        "healthyCount"
-    );
-
-
-    const incidentCount = document.getElementById(
-        "incidentCount"
-    );
-
-
-    serviceCount.textContent =
+    document.getElementById(
+        "totalServices"
+    ).textContent =
         data.total;
 
 
-    healthyCount.textContent =
+    document.getElementById(
+        "healthyServices"
+    ).textContent =
         data.healthy;
 
 
-    incidentCount.textContent =
-        data.problems;
+    document.getElementById(
+        "incidentServices"
+    ).textContent =
+        data.incidents;
+
+
+    const status =
+        document.getElementById(
+            "systemStatus"
+        );
 
 
     if (
-        data.status === "healthy"
+        data.incidents === 0
     ) {
 
-        badge.className =
-            "system-badge healthy";
+        status.className =
+            "system-status healthy";
 
-        badge.innerHTML =
-            `
-            <span class="status-dot"></span>
-            All systems operational
-            `;
+
+        status.textContent =
+            `${data.healthy}/${data.total} Healthy`;
 
     }
 
     else {
 
-        badge.className =
-            "system-badge incident";
+        status.className =
+            "system-status incident";
 
-        badge.innerHTML =
-            `
-            <span class="status-dot"></span>
-            ${data.problems} incident${data.problems === 1 ? "" : "s"}
-            `;
 
+        status.textContent =
+            `${data.incidents} Incident${data.incidents === 1 ? "" : "s"}`;
     }
-
-
-    const lastUpdated = document.getElementById(
-        "lastUpdated"
-    );
-
-
-    lastUpdated.textContent =
-        "Updated "
-        + new Date().toLocaleTimeString();
-
-
-    renderServices(
-        data.services
-    );
-
 }
 
 
-
 // ============================================================
-// RENDER SERVICE CARDS
+// SERVICE CARDS
 // ============================================================
 
-function renderServices(services) {
+function renderServices(
+    services
+) {
 
-    const grid = document.getElementById(
-        "servicesGrid"
-    );
+    const grid =
+        document.getElementById(
+            "servicesGrid"
+        );
 
 
-    grid.innerHTML = "";
+    grid.innerHTML =
+        "";
 
 
     services.forEach(
         service => {
 
             const healthy =
-                service.status === "healthy";
+                service.status
+                ===
+                "healthy";
 
 
-            const card = document.createElement(
-                "article"
-            );
+            const responseTime =
+                service.response_time_ms
+                !== undefined
+                ?
+                `${service.response_time_ms} ms`
+                :
+                "—";
+
+
+            const card =
+                document.createElement(
+                    "article"
+                );
 
 
             card.className =
                 "service-card";
 
 
-            let latency = "—";
+            let databaseButton =
+                "";
 
 
             if (
-                service.response_time_ms !== undefined
+                service.mysql
             ) {
 
-                latency =
-                    Number(
-                        service.response_time_ms
-                    ).toFixed(
-                        1
-                    );
+                databaseButton =
+                    `
+                    <button
+                        onclick="checkDatabase(
+                            '${service.service}'
+                        )"
+                    >
+                        DB Test
+                    </button>
+                    `;
+            }
 
+
+            let powerButton =
+                "";
+
+
+            if (
+                healthy
+            ) {
+
+                powerButton =
+                    `
+                    <button
+                        class="stop-button"
+                        onclick="stopService(
+                            '${service.service}'
+                        )"
+                    >
+                        Stop Service
+                    </button>
+                    `;
+
+            }
+
+            else {
+
+                powerButton =
+                    `
+                    <button
+                        class="start-button"
+                        onclick="startService(
+                            '${service.service}'
+                        )"
+                    >
+                        Start Service
+                    </button>
+                    `;
             }
 
 
@@ -214,43 +307,90 @@ function renderServices(services) {
 
                 <div class="service-top">
 
-                    <div class="service-name">
-                        ${escapeHtml(service.title)}
+                    <div>
+
+                        <h3 class="service-title">
+
+                            ${escapeHtml(
+                                service.display_name
+                            )}
+
+                        </h3>
+
+
+                        <div class="service-description">
+
+                            ${escapeHtml(
+                                service.description
+                            )}
+
+                        </div>
+
                     </div>
+
 
                     <div
-                        class="service-state ${healthy ? "healthy" : "problem"}"
+                        class="
+                            service-status
+                            ${healthy ? "healthy" : "problem"}
+                        "
                     >
 
-                        <span class="dot"></span>
+                        <i></i>
 
-                        ${escapeHtml(service.status)}
+                        ${escapeHtml(
+                            service.status
+                        )}
 
                     </div>
 
                 </div>
 
 
-                <div class="service-description">
-                    ${escapeHtml(service.description)}
-                </div>
+                <div class="service-meta">
 
+                    <div class="meta-item">
 
-                <div class="service-stat">
+                        <label>
+                            Technology
+                        </label>
 
-                    <div class="service-latency">
-
-                        ${latency}
-
-                        <small>
-                            ${latency === "—" ? "" : "ms"}
-                        </small>
+                        <strong>
+                            ${escapeHtml(
+                                service.technology
+                            )}
+                        </strong>
 
                     </div>
 
 
-                    <div class="service-port">
-                        PORT ${service.port}
+                    <div class="meta-item">
+
+                        <label>
+                            Database
+                        </label>
+
+                        <strong>
+                            ${escapeHtml(
+                                service.database
+                            )}
+                        </strong>
+
+                    </div>
+
+
+                    <div class="meta-item">
+
+                        <label>
+                            Port / Response
+                        </label>
+
+                        <strong>
+                            ${service.port}
+                            ·
+                            ${responseTime}
+                        </strong>
+
                     </div>
 
                 </div>
@@ -259,7 +399,7 @@ function renderServices(services) {
                 <div class="service-actions">
 
                     <button
-                        onclick="viewLogs(
+                        onclick="showLogs(
                             '${service.service}'
                         )"
                     >
@@ -268,7 +408,7 @@ function renderServices(services) {
 
 
                     <button
-                        onclick="viewDependencies(
+                        onclick="showDependencies(
                             '${service.service}'
                         )"
                     >
@@ -276,22 +416,9 @@ function renderServices(services) {
                     </button>
 
 
-                    ${
-                        !healthy
-                        ?
-                        `
-                        <button
-                            class="recover-button"
-                            onclick="recoverService(
-                                '${service.service}'
-                            )"
-                        >
-                            Recover
-                        </button>
-                        `
-                        :
-                        ""
-                    }
+                    ${databaseButton}
+
+                    ${powerButton}
 
                 </div>
                 `;
@@ -300,105 +427,521 @@ function renderServices(services) {
             grid.appendChild(
                 card
             );
-
         }
     );
-
 }
 
 
-
 // ============================================================
-// DATA SUMMARY
+// STOP SERVICE
 // ============================================================
 
-async function refreshDataSummary() {
+async function stopService(
+    service
+) {
+
+    const confirmed =
+        confirm(
+            `Stop ${service}?\n\n`
+            +
+            "This is useful for demonstrating "
+            +
+            "AI automatic recovery."
+        );
+
+
+    if (
+        !confirmed
+    ) {
+
+        return;
+    }
+
+
+    openModal(
+        "Stopping Service",
+        `Stopping ${service}...`
+    );
+
 
     try {
 
-        const response = await fetch(
-            "/api/data-summary"
+        const response =
+            await fetch(
+                `/api/service/${service}/stop`,
+                {
+                    method: "POST"
+                }
+            );
+
+
+        const data =
+            await response.json();
+
+
+        setModalContent(
+            JSON.stringify(
+                data,
+                null,
+                2
+            )
         );
 
 
-        const data = await response.json();
+        await loadSystem();
+
+    }
+
+    catch (error) {
+
+        setModalContent(
+            String(
+                error
+            )
+        );
+    }
+}
 
 
-        setCount(
-            "usageCount",
-            data.meter_readings
+// ============================================================
+// START SERVICE
+// ============================================================
+
+async function startService(
+    service
+) {
+
+    openModal(
+        "Starting Service",
+        `Starting ${service}...`
+    );
+
+
+    try {
+
+        const response =
+            await fetch(
+                `/api/service/${service}/start`,
+                {
+                    method: "POST"
+                }
+            );
+
+
+        const data =
+            await response.json();
+
+
+        setModalContent(
+            JSON.stringify(
+                data,
+                null,
+                2
+            )
         );
 
 
-        setCount(
-            "billCount",
-            data.bills
+        await loadSystem();
+
+        await loadAllData();
+
+    }
+
+    catch (error) {
+
+        setModalContent(
+            String(
+                error
+            )
         );
+    }
+}
 
 
-        setCount(
-            "predictionCount",
-            data.predictions
-        );
+// ============================================================
+// LOGS
+// ============================================================
+
+async function showLogs(
+    service
+) {
+
+    openModal(
+        service
+        +
+        " · Logs",
+        "Loading logs..."
+    );
 
 
-        setCount(
-            "userCount",
-            data.users
+    try {
+
+        const response =
+            await fetch(
+                `/api/service/${service}/logs?lines=100`
+            );
+
+
+        const data =
+            await response.json();
+
+
+        setModalContent(
+            data.logs
+            ||
+            JSON.stringify(
+                data,
+                null,
+                2
+            )
         );
 
     }
 
     catch (error) {
 
-        console.error(
-            error
+        setModalContent(
+            String(
+                error
+            )
+        );
+    }
+}
+
+
+// ============================================================
+// DEPENDENCIES
+// ============================================================
+
+async function showDependencies(
+    service
+) {
+
+    openModal(
+        service
+        +
+        " · Dependencies",
+        "Checking dependencies..."
+    );
+
+
+    try {
+
+        const response =
+            await fetch(
+                `/api/service/${service}/dependencies`
+            );
+
+
+        const data =
+            await response.json();
+
+
+        setModalContent(
+            JSON.stringify(
+                data,
+                null,
+                2
+            )
         );
 
     }
 
+    catch (error) {
+
+        setModalContent(
+            String(
+                error
+            )
+        );
+    }
 }
 
 
+// ============================================================
+// DATABASE TEST
+// ============================================================
 
-function setCount(
-    elementId,
-    item
+async function checkDatabase(
+    service
 ) {
 
-    const element = document.getElementById(
-        elementId
+    openModal(
+        service
+        +
+        " · MySQL Verification",
+        "Testing database connection..."
     );
 
 
-    if (
-        item
-        &&
-        item.available
-    ) {
+    try {
 
-        element.textContent =
-            item.count;
+        const response =
+            await fetch(
+                `/api/service/${service}/mysql`
+            );
+
+
+        const data =
+            await response.json();
+
+
+        setModalContent(
+            JSON.stringify(
+                data,
+                null,
+                2
+            )
+        );
 
     }
 
-    else {
+    catch (error) {
 
-        element.textContent =
-            "—";
-
+        setModalContent(
+            String(
+                error
+            )
+        );
     }
-
 }
 
+
+// ============================================================
+// LOAD ALL DATA
+// ============================================================
+
+async function loadAllData() {
+
+    await Promise.all(
+
+        [
+
+            loadDataset(
+                "bills",
+                "billsTable",
+                "billCount"
+            ),
+
+            loadDataset(
+                "predictions",
+                "predictionsTable",
+                "predictionCount"
+            ),
+
+            loadDataset(
+                "usage",
+                "usageTable",
+                "usageCount"
+            ),
+
+            loadDataset(
+                "users",
+                "usersTable",
+                "userCount"
+            ),
+
+        ]
+
+    );
+}
+
+
+// ============================================================
+// LOAD ONE DATASET
+// ============================================================
+
+async function loadDataset(
+    dataset,
+    containerId,
+    countId
+) {
+
+    const container =
+        document.getElementById(
+            containerId
+        );
+
+
+    const count =
+        document.getElementById(
+            countId
+        );
+
+
+    container.innerHTML =
+        '<div class="empty-message">Loading...</div>';
+
+
+    try {
+
+        const response =
+            await fetch(
+                `/api/data/${dataset}`
+            );
+
+
+        const result =
+            await response.json();
+
+
+        if (
+            !result.success
+        ) {
+
+            container.innerHTML =
+                `
+                <div class="empty-message">
+                    Service unavailable
+                </div>
+                `;
+
+            count.textContent =
+                "—";
+
+            return;
+        }
+
+
+        const rows =
+            normalizeRows(
+                result.data
+            );
+
+
+        count.textContent =
+            rows.length;
+
+
+        renderMiniTable(
+            rows,
+            container
+        );
+
+    }
+
+    catch (error) {
+
+        container.innerHTML =
+            `
+            <div class="empty-message">
+                Unable to load data
+            </div>
+            `;
+
+        count.textContent =
+            "—";
+    }
+}
+
+
+// ============================================================
+// TABLE
+// ============================================================
+
+function renderMiniTable(
+    rows,
+    container
+) {
+
+    if (
+        rows.length === 0
+    ) {
+
+        container.innerHTML =
+            `
+            <div class="empty-message">
+                No records available.
+            </div>
+            `;
+
+        return;
+    }
+
+
+    const keys =
+        Object.keys(
+            rows[0]
+        );
+
+
+    let html =
+        "<table><thead><tr>";
+
+
+    keys.forEach(
+        key => {
+
+            html +=
+                `<th>
+                    ${escapeHtml(key)}
+                </th>`;
+        }
+    );
+
+
+    html +=
+        "</tr></thead><tbody>";
+
+
+    rows.forEach(
+        row => {
+
+            html +=
+                "<tr>";
+
+
+            keys.forEach(
+                key => {
+
+                    let value =
+                        row[key];
+
+
+                    if (
+                        typeof value
+                        ===
+                        "object"
+                        &&
+                        value !== null
+                    ) {
+
+                        value =
+                            JSON.stringify(
+                                value
+                            );
+                    }
+
+
+                    html +=
+                        `<td title="${escapeHtml(value)}">
+                            ${escapeHtml(value)}
+                        </td>`;
+                }
+            );
+
+
+            html +=
+                "</tr>";
+        }
+    );
+
+
+    html +=
+        "</tbody></table>";
+
+
+    container.innerHTML =
+        html;
+}
 
 
 // ============================================================
 // AI AGENT
 // ============================================================
 
-async function sendAgentMessage(
-    suppliedMessage = null
+async function runAgent(
+    message
 ) {
 
     if (
@@ -406,18 +949,97 @@ async function sendAgentMessage(
     ) {
 
         return;
-
     }
 
 
-    const input = document.getElementById(
-        "agentInput"
-    );
+    agentBusy =
+        true;
 
 
-    let message =
-        suppliedMessage
-        ||
+    const output =
+        document.getElementById(
+            "agentOutput"
+        );
+
+
+    output.textContent =
+        "AI SRE Agent is investigating the live system...";
+
+
+    try {
+
+        const response =
+            await fetch(
+                "/api/agent",
+                {
+
+                    method: "POST",
+
+                    headers: {
+
+                        "Content-Type":
+                            "application/json"
+                    },
+
+                    body:
+                        JSON.stringify(
+                            {
+                                message: message
+                            }
+                        )
+                }
+            );
+
+
+        const data =
+            await response.json();
+
+
+        output.textContent =
+            data.success
+            ?
+            data.response
+            :
+            "Agent Error:\n"
+            +
+            data.error;
+
+
+        await loadSystem();
+
+        await loadAllData();
+
+    }
+
+    catch (error) {
+
+        output.textContent =
+            "Unable to contact agent.\n\n"
+            +
+            error;
+    }
+
+    finally {
+
+        agentBusy =
+            false;
+    }
+}
+
+
+// ============================================================
+// SEND CUSTOM MESSAGE
+// ============================================================
+
+function sendAgent() {
+
+    const input =
+        document.getElementById(
+            "agentInput"
+        );
+
+
+    const message =
         input.value.trim();
 
 
@@ -426,321 +1048,53 @@ async function sendAgentMessage(
     ) {
 
         return;
-
     }
 
 
-    input.value = "";
+    input.value =
+        "";
 
 
-    const output = document.getElementById(
-        "agentOutput"
-    );
-
-
-    const sendButton = document.getElementById(
-        "sendButton"
-    );
-
-
-    agentBusy = true;
-
-
-    sendButton.disabled = true;
-
-
-    output.innerHTML =
-        `
-
-        <div class="agent-loading">
-
-            <div class="loader"></div>
-
-            <div>
-
-                Agent is investigating the live system...
-
-            </div>
-
-        </div>
-        `;
-
-
-    try {
-
-        const response = await fetch(
-            "/api/agent",
-            {
-
-                method: "POST",
-
-                headers: {
-                    "Content-Type":
-                        "application/json"
-                },
-
-                body: JSON.stringify(
-                    {
-                        message: message
-                    }
-                )
-
-            }
-        );
-
-
-        const data = await response.json();
-
-
-        if (
-            data.success
-        ) {
-
-            output.textContent =
-                data.response;
-
-        }
-
-        else {
-
-            output.textContent =
-                "Agent error:\n"
-                +
-                data.error;
-
-        }
-
-
-        await refreshSystem();
-
-        await refreshDataSummary();
-
-    }
-
-    catch (error) {
-
-        output.textContent =
-            "Unable to contact the AI SRE agent.\n\n"
-            +
-            error;
-
-    }
-
-    finally {
-
-        agentBusy = false;
-
-        sendButton.disabled = false;
-
-    }
-
-}
-
-
-
-// ============================================================
-// QUICK PROMPTS
-// ============================================================
-
-function askQuickPrompt(
-    message
-) {
-
-    sendAgentMessage(
+    runAgent(
         message
     );
-
 }
 
 
+document.getElementById(
+    "agentInput"
+).addEventListener(
+    "keydown",
+    event => {
 
-function runFullInvestigation() {
+        if (
+            event.key
+            ===
+            "Enter"
+        ) {
 
-    sendAgentMessage(
+            event.preventDefault();
 
-        "Investigate the whole Smart Electricity System. "
-        +
-        "Find any incidents, analyze logs and dependencies, "
-        +
-        "and automatically recover stopped services when safe. "
-        +
-        "Verify the final system status."
+            sendAgent();
+        }
+    }
+);
 
+
+// ============================================================
+// SCROLL AGENT
+// ============================================================
+
+function scrollToAgent() {
+
+    document.getElementById(
+        "agentSection"
+    ).scrollIntoView(
+        {
+            behavior: "smooth"
+        }
     );
-
 }
-
-
-
-// ============================================================
-// LOG VIEWER
-// ============================================================
-
-async function viewLogs(
-    serviceName
-) {
-
-    openModal(
-        serviceName + " · Logs",
-        "Loading..."
-    );
-
-
-    try {
-
-        const response = await fetch(
-
-            `/api/service/${serviceName}/logs?lines=80`
-
-        );
-
-
-        const data = await response.json();
-
-
-        const content =
-            data.logs
-            ||
-            JSON.stringify(
-                data,
-                null,
-                2
-            );
-
-
-        setModalContent(
-            content
-        );
-
-    }
-
-    catch (error) {
-
-        setModalContent(
-            String(
-                error
-            )
-        );
-
-    }
-
-}
-
-
-
-// ============================================================
-// DEPENDENCIES
-// ============================================================
-
-async function viewDependencies(
-    serviceName
-) {
-
-    openModal(
-        serviceName
-        +
-        " · Dependencies",
-        "Loading..."
-    );
-
-
-    try {
-
-        const response = await fetch(
-
-            `/api/service/${serviceName}/dependencies`
-
-        );
-
-
-        const data = await response.json();
-
-
-        setModalContent(
-
-            JSON.stringify(
-                data,
-                null,
-                2
-            )
-
-        );
-
-    }
-
-    catch (error) {
-
-        setModalContent(
-            String(
-                error
-            )
-        );
-
-    }
-
-}
-
-
-
-// ============================================================
-// CONTROLLED RECOVERY
-// ============================================================
-
-async function recoverService(
-    serviceName
-) {
-
-    openModal(
-        serviceName
-        +
-        " · Recovery",
-        "Starting controlled recovery..."
-    );
-
-
-    try {
-
-        const response = await fetch(
-
-            `/api/service/${serviceName}/recover`,
-
-            {
-                method: "POST"
-            }
-
-        );
-
-
-        const data = await response.json();
-
-
-        setModalContent(
-
-            JSON.stringify(
-                data,
-                null,
-                2
-            )
-
-        );
-
-
-        await refreshSystem();
-
-    }
-
-    catch (error) {
-
-        setModalContent(
-            String(
-                error
-            )
-        );
-
-    }
-
-}
-
 
 
 // ============================================================
@@ -769,9 +1123,7 @@ function openModal(
     ).classList.remove(
         "hidden"
     );
-
 }
-
 
 
 function setModalContent(
@@ -782,9 +1134,7 @@ function setModalContent(
         "modalContent"
     ).textContent =
         content;
-
 }
-
 
 
 function closeModal() {
@@ -794,86 +1144,31 @@ function closeModal() {
     ).classList.add(
         "hidden"
     );
-
 }
 
 
-
 // ============================================================
-// EVENTS
-// ============================================================
-
-document.getElementById(
-    "refreshButton"
-).addEventListener(
-    "click",
-    async () => {
-
-        await refreshSystem();
-
-        await refreshDataSummary();
-
-    }
-);
-
-
-
-document.getElementById(
-    "agentInput"
-).addEventListener(
-    "keydown",
-    event => {
-
-        if (
-            event.key === "Enter"
-            &&
-            !event.shiftKey
-        ) {
-
-            event.preventDefault();
-
-            sendAgentMessage();
-
-        }
-
-    }
-);
-
-
-
-document.querySelector(
-    ".modal-backdrop"
-).addEventListener(
-    "click",
-    closeModal
-);
-
-
-
-// ============================================================
-// START
+// INITIALIZE
 // ============================================================
 
-async function initializeDashboard() {
+async function initialize() {
 
-    await refreshSystem();
+    await loadSystem();
 
-    await refreshDataSummary();
+    await loadAllData();
 
 
     setInterval(
-        refreshSystem,
-        8000
+        loadSystem,
+        5000
     );
 
 
     setInterval(
-        refreshDataSummary,
+        loadAllData,
         15000
     );
-
 }
 
 
-
-initializeDashboard();
+initialize();

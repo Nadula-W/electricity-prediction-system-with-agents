@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+
 <html lang="en">
 
 <head>
@@ -7,12 +8,13 @@
 
     <meta
         name="viewport"
-        content="width=device-width, initial-scale=1.0"
+        content="width=device-width, initial-scale=1"
     >
 
     <title>
-        AI SRE Command Center
+        Smart Electricity · AI SRE
     </title>
+
 
     <link
         rel="stylesheet"
@@ -21,594 +23,653 @@
 
 </head>
 
+
 <body>
 
 
-<div class="app-shell">
+<!-- ====================================================== -->
+<!-- HEADER -->
+<!-- ====================================================== -->
+
+<header class="header">
+
+    <div>
+
+        <strong>
+            Smart Electricity
+        </strong>
+
+        <span>
+            AI SRE Platform
+        </span>
+
+    </div>
 
 
-    <!-- ================================================== -->
-    <!-- HEADER -->
-    <!-- ================================================== -->
+    <div
+        id="systemStatus"
+        class="system-status neutral"
+    >
+        Connecting
+    </div>
 
-    <header class="topbar">
+</header>
 
-        <div class="brand">
 
-            <div class="brand-mark">
-                AI
-            </div>
 
-            <div>
+<main>
 
-                <div class="brand-title">
-                    SRE Command Center
-                </div>
 
-                <div class="brand-subtitle">
-                    Smart Electricity System
-                </div>
+<!-- ====================================================== -->
+<!-- HERO -->
+<!-- ====================================================== -->
 
-            </div>
+<section class="hero">
+
+    <div>
+
+        <div class="eyebrow">
+            AGENTIC SRE SYSTEM
+        </div>
+
+        <h1>
+            Intelligent Microservice
+            Monitoring & Recovery
+        </h1>
+
+        <p>
+            A real Smart Electricity microservice environment
+            monitored by an AI SRE agent that can investigate
+            failures, analyze logs and dependencies, test
+            databases and automatically recover stopped services.
+        </p>
+
+    </div>
+
+
+    <button
+        class="primary-button"
+        onclick="scrollToAgent()"
+    >
+        Open AI Agent
+    </button>
+
+</section>
+
+
+
+<!-- ====================================================== -->
+<!-- SUMMARY -->
+<!-- ====================================================== -->
+
+<section class="summary-grid">
+
+    <div class="summary-card">
+
+        <span>
+            Services
+        </span>
+
+        <strong id="totalServices">
+            —
+        </strong>
+
+        <small>
+            monitored
+        </small>
+
+    </div>
+
+
+    <div class="summary-card">
+
+        <span>
+            Healthy
+        </span>
+
+        <strong id="healthyServices">
+            —
+        </strong>
+
+        <small>
+            currently available
+        </small>
+
+    </div>
+
+
+    <div class="summary-card">
+
+        <span>
+            Incidents
+        </span>
+
+        <strong id="incidentServices">
+            —
+        </strong>
+
+        <small>
+            require attention
+        </small>
+
+    </div>
+
+
+    <div class="summary-card">
+
+        <span>
+            Auto Recovery
+        </span>
+
+        <strong class="recovery-text">
+            Enabled
+        </strong>
+
+        <small>
+            controlled service restart
+        </small>
+
+    </div>
+
+</section>
+
+
+
+<!-- ====================================================== -->
+<!-- MICROSERVICES -->
+<!-- ====================================================== -->
+
+<section class="section">
+
+    <div class="section-heading">
+
+        <div>
+
+            <h2>
+                Microservices
+            </h2>
+
+            <p>
+                Each service performs one independent part
+                of the Smart Electricity platform.
+            </p>
 
         </div>
 
 
-        <div class="topbar-right">
+        <button
+            class="secondary-button"
+            onclick="loadSystem()"
+        >
+            Refresh
+        </button>
 
-            <div
-                id="systemBadge"
-                class="system-badge neutral"
-            >
-
-                <span class="status-dot"></span>
-
-                Connecting
-
-            </div>
+    </div>
 
 
-            <button
-                id="refreshButton"
-                class="icon-button"
-                title="Refresh system"
-            >
-                ↻
-            </button>
+    <div
+        id="servicesGrid"
+        class="services-grid"
+    >
+    </div>
+
+</section>
+
+
+
+<!-- ====================================================== -->
+<!-- REAL SYSTEM DATA -->
+<!-- ====================================================== -->
+
+<section class="section">
+
+    <div class="section-heading">
+
+        <div>
+
+            <h2>
+                Live System Data
+            </h2>
+
+            <p>
+                Real records returned directly from the
+                running microservices and their databases.
+            </p>
 
         </div>
 
-    </header>
+
+        <button
+            class="secondary-button"
+            onclick="loadAllData()"
+        >
+            Refresh Data
+        </button>
+
+    </div>
 
 
-
-    <!-- ================================================== -->
-    <!-- MAIN -->
-    <!-- ================================================== -->
-
-    <main class="page">
+    <div class="data-grid">
 
 
-        <!-- ================================================== -->
-        <!-- HERO -->
-        <!-- ================================================== -->
+        <!-- BILLING -->
 
-        <section class="hero">
+        <article class="data-panel">
 
-            <div>
-
-                <div class="eyebrow">
-                    AGENTIC SITE RELIABILITY ENGINEERING
-                </div>
-
-                <h1>
-                    Observe. Investigate.
-                    <span>Recover.</span>
-                </h1>
-
-                <p>
-                    An AI-powered SRE agent monitoring four
-                    live Smart Electricity microservices with
-                    health checks, logs, dependency analysis,
-                    MySQL diagnostics and controlled recovery.
-                </p>
-
-            </div>
-
-
-            <div class="hero-actions">
-
-                <button
-                    class="primary-button"
-                    onclick="runFullInvestigation()"
-                >
-                    <span>✦</span>
-                    Run AI Investigation
-                </button>
-
-            </div>
-
-        </section>
-
-
-
-        <!-- ================================================== -->
-        <!-- SYSTEM SUMMARY -->
-        <!-- ================================================== -->
-
-        <section class="summary-grid">
-
-
-            <article class="metric-card">
-
-                <div class="metric-label">
-                    Services
-                </div>
-
-                <div
-                    id="serviceCount"
-                    class="metric-value"
-                >
-                    —
-                </div>
-
-                <div class="metric-help">
-                    monitored microservices
-                </div>
-
-            </article>
-
-
-            <article class="metric-card">
-
-                <div class="metric-label">
-                    Healthy
-                </div>
-
-                <div
-                    id="healthyCount"
-                    class="metric-value"
-                >
-                    —
-                </div>
-
-                <div class="metric-help">
-                    responding normally
-                </div>
-
-            </article>
-
-
-            <article class="metric-card">
-
-                <div class="metric-label">
-                    Incidents
-                </div>
-
-                <div
-                    id="incidentCount"
-                    class="metric-value"
-                >
-                    —
-                </div>
-
-                <div class="metric-help">
-                    requiring attention
-                </div>
-
-            </article>
-
-
-            <article class="metric-card">
-
-                <div class="metric-label">
-                    Recovery
-                </div>
-
-                <div class="metric-value small-value">
-                    Enabled
-                </div>
-
-                <div class="metric-help">
-                    controlled auto-start
-                </div>
-
-            </article>
-
-
-        </section>
-
-
-
-        <!-- ================================================== -->
-        <!-- SERVICES -->
-        <!-- ================================================== -->
-
-        <section class="section">
-
-            <div class="section-header">
+            <div class="data-header">
 
                 <div>
 
-                    <h2>
-                        Live Services
-                    </h2>
+                    <span class="data-label">
+                        MYSQL · BILLING_DB
+                    </span>
+
+                    <h3>
+                        Bills
+                    </h3>
 
                     <p>
-                        Real-time status from the microservice environment
+                        Generated electricity bills.
                     </p>
 
                 </div>
 
 
-                <div
-                    id="lastUpdated"
-                    class="last-updated"
-                >
+                <strong id="billCount">
                     —
-                </div>
+                </strong>
 
             </div>
 
 
             <div
-                id="servicesGrid"
-                class="services-grid"
+                id="billsTable"
+                class="mini-table"
             >
-
-                <div class="loading-card">
-                    Loading services...
-                </div>
-
+                Loading...
             </div>
 
-        </section>
+        </article>
 
 
 
-        <!-- ================================================== -->
-        <!-- MAIN WORKSPACE -->
-        <!-- ================================================== -->
+        <!-- PREDICTIONS -->
 
-        <section class="workspace">
+        <article class="data-panel">
 
-
-            <!-- ================================================== -->
-            <!-- AI AGENT -->
-            <!-- ================================================== -->
-
-            <div class="agent-panel">
-
-
-                <div class="panel-header">
-
-                    <div>
-
-                        <div class="panel-title-row">
-
-                            <div class="ai-orb">
-                                ✦
-                            </div>
-
-                            <h2>
-                                Incident Agent
-                            </h2>
-
-                        </div>
-
-                        <p>
-                            Ask the agent to investigate or recover the system.
-                        </p>
-
-                    </div>
-
-
-                    <div class="agent-live">
-                        <span></span>
-                        ONLINE
-                    </div>
-
-                </div>
-
-
-
-                <div
-                    id="agentOutput"
-                    class="agent-output"
-                >
-
-                    <div class="welcome-message">
-
-                        <div class="welcome-icon">
-                            ✦
-                        </div>
-
-                        <h3>
-                            AI SRE Agent Ready
-                        </h3>
-
-                        <p>
-                            The agent can inspect health endpoints,
-                            service ports, logs, dependencies, MySQL
-                            connectivity and safely recover stopped services.
-                        </p>
-
-                    </div>
-
-                </div>
-
-
-
-                <div class="quick-prompts">
-
-                    <button
-                        onclick="askQuickPrompt(
-                            'Investigate the whole system'
-                        )"
-                    >
-                        Check entire system
-                    </button>
-
-                    <button
-                        onclick="askQuickPrompt(
-                            'Check billing-service and investigate any problem'
-                        )"
-                    >
-                        Inspect Billing
-                    </button>
-
-                    <button
-                        onclick="askQuickPrompt(
-                            'Find any incidents and automatically recover stopped services when safe'
-                        )"
-                    >
-                        Detect & Recover
-                    </button>
-
-                </div>
-
-
-
-                <div class="agent-input">
-
-                    <textarea
-                        id="agentInput"
-                        rows="2"
-                        placeholder="Ask the SRE agent anything about the system..."
-                    ></textarea>
-
-
-                    <button
-                        id="sendButton"
-                        onclick="sendAgentMessage()"
-                    >
-                        Send
-                    </button>
-
-                </div>
-
-
-            </div>
-
-
-
-            <!-- ================================================== -->
-            <!-- RIGHT SIDE -->
-            <!-- ================================================== -->
-
-            <aside class="side-column">
-
-
-                <!-- DATA -->
-
-                <div class="side-card">
-
-                    <div class="side-title">
-                        Live Data
-                    </div>
-
-                    <div class="data-list">
-
-
-                        <div class="data-row">
-
-                            <span>
-                                Meter readings
-                            </span>
-
-                            <strong id="usageCount">
-                                —
-                            </strong>
-
-                        </div>
-
-
-                        <div class="data-row">
-
-                            <span>
-                                Bills
-                            </span>
-
-                            <strong id="billCount">
-                                —
-                            </strong>
-
-                        </div>
-
-
-                        <div class="data-row">
-
-                            <span>
-                                Predictions
-                            </span>
-
-                            <strong id="predictionCount">
-                                —
-                            </strong>
-
-                        </div>
-
-
-                        <div class="data-row">
-
-                            <span>
-                                Users
-                            </span>
-
-                            <strong id="userCount">
-                                —
-                            </strong>
-
-                        </div>
-
-
-                    </div>
-
-                </div>
-
-
-
-                <!-- AGENT CAPABILITIES -->
-
-                <div class="side-card">
-
-                    <div class="side-title">
-                        Agent Tools
-                    </div>
-
-
-                    <div class="tool-list">
-
-                        <div class="tool">
-                            HTTP Health
-                        </div>
-
-                        <div class="tool">
-                            TCP Diagnostics
-                        </div>
-
-                        <div class="tool">
-                            Log Analysis
-                        </div>
-
-                        <div class="tool">
-                            Dependencies
-                        </div>
-
-                        <div class="tool">
-                            MySQL Test
-                        </div>
-
-                        <div class="tool">
-                            Auto Recovery
-                        </div>
-
-                    </div>
-
-                </div>
-
-
-
-                <!-- ARCHITECTURE -->
-
-                <div class="side-card architecture-card">
-
-                    <div class="side-title">
-                        Agent Flow
-                    </div>
-
-                    <div class="flow">
-
-                        <div>
-                            Detect
-                        </div>
-
-                        <span>↓</span>
-
-                        <div>
-                            Diagnose
-                        </div>
-
-                        <span>↓</span>
-
-                        <div>
-                            Analyze
-                        </div>
-
-                        <span>↓</span>
-
-                        <div>
-                            Recover
-                        </div>
-
-                        <span>↓</span>
-
-                        <div>
-                            Verify
-                        </div>
-
-                    </div>
-
-                </div>
-
-
-            </aside>
-
-
-        </section>
-
-
-    </main>
-
-
-
-    <!-- ================================================== -->
-    <!-- MODAL -->
-    <!-- ================================================== -->
-
-    <div
-        id="modal"
-        class="modal hidden"
-    >
-
-        <div class="modal-backdrop"></div>
-
-        <div class="modal-card">
-
-            <div class="modal-header">
+            <div class="data-header">
 
                 <div>
 
-                    <div
-                        id="modalTitle"
-                        class="modal-title"
-                    >
-                        Service Details
-                    </div>
+                    <span class="data-label">
+                        MYSQL · PREDICTION_DB
+                    </span>
+
+                    <h3>
+                        Predictions
+                    </h3>
+
+                    <p>
+                        Forecast electricity consumption.
+                    </p>
 
                 </div>
 
+
+                <strong id="predictionCount">
+                    —
+                </strong>
+
+            </div>
+
+
+            <div
+                id="predictionsTable"
+                class="mini-table"
+            >
+                Loading...
+            </div>
+
+        </article>
+
+
+
+        <!-- METER -->
+
+        <article class="data-panel">
+
+            <div class="data-header">
+
+                <div>
+
+                    <span class="data-label">
+                        MONGODB · METER DATA
+                    </span>
+
+                    <h3>
+                        Meter Readings
+                    </h3>
+
+                    <p>
+                        Electricity usage measurements.
+                    </p>
+
+                </div>
+
+
+                <strong id="usageCount">
+                    —
+                </strong>
+
+            </div>
+
+
+            <div
+                id="usageTable"
+                class="mini-table"
+            >
+                Loading...
+            </div>
+
+        </article>
+
+
+
+        <!-- USERS -->
+
+        <article class="data-panel">
+
+            <div class="data-header">
+
+                <div>
+
+                    <span class="data-label">
+                        MYSQL · USER_DB
+                    </span>
+
+                    <h3>
+                        Users
+                    </h3>
+
+                    <p>
+                        Electricity platform customers.
+                    </p>
+
+                </div>
+
+
+                <strong id="userCount">
+                    —
+                </strong>
+
+            </div>
+
+
+            <div
+                id="usersTable"
+                class="mini-table"
+            >
+                Loading...
+            </div>
+
+        </article>
+
+
+    </div>
+
+</section>
+
+
+
+<!-- ====================================================== -->
+<!-- AI SRE AGENT -->
+<!-- ====================================================== -->
+
+<section
+    id="agentSection"
+    class="section"
+>
+
+    <div class="section-heading">
+
+        <div>
+
+            <h2>
+                AI SRE Incident Agent
+            </h2>
+
+            <p>
+                The agent investigates the same live
+                microservices shown above.
+            </p>
+
+        </div>
+
+
+        <span class="agent-online">
+            ● Agent Online
+        </span>
+
+    </div>
+
+
+
+    <div class="agent-layout">
+
+
+        <div class="agent-card">
+
+
+            <div class="quick-actions">
+
                 <button
-                    class="close-button"
-                    onclick="closeModal()"
+                    onclick="runAgent(
+                        'Investigate the whole system'
+                    )"
                 >
-                    ×
+                    Investigate System
+                </button>
+
+
+                <button
+                    onclick="runAgent(
+                        'Find all incidents and automatically recover any stopped services when safe. Verify the final status.'
+                    )"
+                >
+                    Detect & Recover
+                </button>
+
+
+                <button
+                    onclick="runAgent(
+                        'Check billing-service and investigate any problem'
+                    )"
+                >
+                    Check Billing
                 </button>
 
             </div>
 
 
-            <pre
-                id="modalContent"
-                class="modal-content"
-            ></pre>
+
+            <div
+                id="agentOutput"
+                class="agent-output"
+            >
+AI SRE Agent ready.
+
+Demo:
+
+1. Stop a service from the Microservices section.
+2. Its status will change to unavailable.
+3. Click "Detect & Recover".
+4. The agent will investigate the failure.
+5. If safe, it will automatically start the service.
+6. The final health status will be verified.
+            </div>
+
+
+
+            <div class="agent-input">
+
+                <input
+                    id="agentInput"
+                    type="text"
+                    placeholder="Ask the SRE agent about the system..."
+                >
+
+
+                <button
+                    onclick="sendAgent()"
+                >
+                    Send
+                </button>
+
+            </div>
+
 
         </div>
 
+
+
+        <!-- AGENT INFO -->
+
+        <aside class="agent-info">
+
+
+            <div class="info-card">
+
+                <h3>
+                    Agent Tools
+                </h3>
+
+
+                <div class="tool-list">
+
+                    <span>
+                        HTTP Health
+                    </span>
+
+                    <span>
+                        TCP Diagnosis
+                    </span>
+
+                    <span>
+                        Log Analysis
+                    </span>
+
+                    <span>
+                        Dependencies
+                    </span>
+
+                    <span>
+                        MySQL Verification
+                    </span>
+
+                    <span>
+                        Auto Recovery
+                    </span>
+
+                </div>
+
+            </div>
+
+
+
+            <div class="info-card">
+
+                <h3>
+                    Investigation Flow
+                </h3>
+
+
+                <div class="flow">
+
+                    <div>
+                        Detect
+                    </div>
+
+                    <b>↓</b>
+
+                    <div>
+                        Diagnose
+                    </div>
+
+                    <b>↓</b>
+
+                    <div>
+                        Analyze
+                    </div>
+
+                    <b>↓</b>
+
+                    <div>
+                        Recover
+                    </div>
+
+                    <b>↓</b>
+
+                    <div>
+                        Verify
+                    </div>
+
+                </div>
+
+            </div>
+
+
+        </aside>
+
+
     </div>
 
+</section>
+
+
+
+</main>
+
+
+
+<!-- ====================================================== -->
+<!-- MODAL -->
+<!-- ====================================================== -->
+
+<div
+    id="modal"
+    class="modal hidden"
+>
+
+    <div
+        class="modal-background"
+        onclick="closeModal()"
+    ></div>
+
+
+    <div class="modal-box">
+
+        <div class="modal-header">
+
+            <strong id="modalTitle">
+                Details
+            </strong>
+
+
+            <button
+                onclick="closeModal()"
+            >
+                ×
+            </button>
+
+        </div>
+
+
+        <pre id="modalContent"></pre>
+
+    </div>
 
 </div>
+
 
 
 <script

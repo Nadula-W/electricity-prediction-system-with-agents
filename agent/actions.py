@@ -4,15 +4,13 @@ import sys
 import time
 from pathlib import Path
 
+import psutil
+
 from agent.tools import (
     diagnose_service,
     get_service_status,
 )
 
-
-# ============================================================
-# PROJECT PATH
-# ============================================================
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
@@ -22,182 +20,135 @@ SERVICE_RUNNER = (
     / "run_service.py"
 )
 
+RUNTIME_DIR = (
+    PROJECT_ROOT
+    / "runtime"
+)
 
-# ============================================================
-# SERVICES THE AI IS ALLOWED TO START
-# ============================================================
+RUNTIME_DIR.mkdir(
+    exist_ok=True
+)
 
-SERVICE_START_CONFIG = {
+
+SERVICE_ACTION_CONFIG = {
 
     "meter-data-service": {
-        "runner_name": "meter",
-        "port": 3000,
+        "runner": "meter",
     },
 
     "billing-service": {
-        "runner_name": "billing",
-        "port": 3001,
+        "runner": "billing",
     },
 
     "prediction-service": {
-        "runner_name": "prediction",
-        "port": 3002,
+        "runner": "prediction",
     },
 
     "user-service": {
-        "runner_name": "user",
-        "port": 8081,
+        "runner": "user",
     },
 }
 
 
-# ============================================================
-# START ONE SERVICE
-# ============================================================
+def get_pid_file(
+    service_name
+):
 
-def start_service(service_name):
-    """
-    Start one approved Smart Electricity microservice.
+    return (
+        RUNTIME_DIR
+        / f"{service_name}.pid"
+    )
 
-    Safety rules:
 
-    - only predefined services may be started
-    - do not start a service that is already healthy
-    - do not start another process if its port is already open
-    - use the existing run_service.py logger
-    - verify health after starting
-    """
+def start_service(
+    service_name
+):
 
-    # --------------------------------------------------------
-    # VALIDATE SERVICE
-    # --------------------------------------------------------
-
-    if service_name not in SERVICE_START_CONFIG:
+    if service_name not in SERVICE_ACTION_CONFIG:
 
         return {
             "service": service_name,
             "status": "denied",
-            "error": (
-                "This service is not approved "
-                "for automatic startup."
-            ),
+            "error": "Service is not approved.",
         }
 
-
-    # --------------------------------------------------------
-    # MAKE SURE OUR SERVICE RUNNER EXISTS
-    # --------------------------------------------------------
-
-    if not SERVICE_RUNNER.exists():
-
-        return {
-            "service": service_name,
-            "status": "failed",
-            "error": (
-                "scripts/run_service.py was not found."
-            ),
-        }
-
-
-    # --------------------------------------------------------
-    # CHECK CURRENT HTTP HEALTH
-    # --------------------------------------------------------
-
-    current_status = get_service_status(
+    current = get_service_status(
         service_name
     )
 
-
-    if current_status.get("status") == "healthy":
+    if current.get(
+        "status"
+    ) == "healthy":
 
         return {
             "service": service_name,
             "status": "already_running",
-            "message": (
-                "Service is already healthy. "
-                "No start action was performed."
-            ),
-            "health": current_status,
+            "message": "Service is already healthy.",
         }
 
-
-    # --------------------------------------------------------
-    # CHECK CURRENT PORT
-    # --------------------------------------------------------
-
-    port_status = diagnose_service(
+    port = diagnose_service(
         service_name
     )
 
-
-    if port_status.get("port_status") == "open":
+    if port.get(
+        "port_status"
+    ) == "open":
 
         return {
             "service": service_name,
-            "status": "not_started",
+            "status": "blocked",
             "message": (
-                "The service port is already open. "
-                "Automatic startup was not performed "
-                "to avoid creating a duplicate process."
+                "Service port is already open. "
+                "A duplicate process will not be started."
             ),
-            "health": current_status,
-            "port_diagnosis": port_status,
         }
 
-
-    # --------------------------------------------------------
-    # GET APPROVED RUNNER NAME
-    # --------------------------------------------------------
-
-    config = SERVICE_START_CONFIG[
+    pid_file = get_pid_file(
         service_name
-    ]
+    )
 
-    runner_name = config[
-        "runner_name"
-    ]
+    if pid_file.exists():
 
+        try:
+            old_pid = int(
+                pid_file
+                .read_text()
+                .strip()
+            )
 
-    # --------------------------------------------------------
-    # BUILD COMMAND
-    #
-    # sys.executable means:
-    #
-    # use the same Python interpreter that is
-    # currently running the SRE agent.
-    #
-    # If .venv is active, it uses that Python.
-    # --------------------------------------------------------
+            if not psutil.pid_exists(
+                old_pid
+            ):
+                pid_file.unlink()
+
+        except Exception:
+
+            try:
+                pid_file.unlink()
+            except Exception:
+                pass
+
+    runner = (
+        SERVICE_ACTION_CONFIG[
+            service_name
+        ]["runner"]
+    )
 
     command = [
-
         sys.executable,
-
         str(
             SERVICE_RUNNER
         ),
-
-        runner_name,
+        runner,
     ]
 
-
-    # --------------------------------------------------------
-    # WINDOWS PROCESS SETTINGS
-    # --------------------------------------------------------
-
     creation_flags = 0
-
 
     if os.name == "nt":
 
         creation_flags = (
             subprocess.CREATE_NEW_CONSOLE
         )
-
-
-    # --------------------------------------------------------
-    # START SERVICE
-    # --------------------------------------------------------
 
     try:
 
@@ -209,7 +160,6 @@ def start_service(service_name):
             creationflags=creation_flags,
         )
 
-
     except Exception as error:
 
         return {
@@ -220,98 +170,204 @@ def start_service(service_name):
             ),
         }
 
+    # Wait up to 20 seconds
+    for _ in range(20):
 
-    # --------------------------------------------------------
-    # GIVE SERVICE TIME TO START
-    # --------------------------------------------------------
+        time.sleep(1)
 
-    time.sleep(
-        5
-    )
+        status = get_service_status(
+            service_name
+        )
 
+        if status.get(
+            "status"
+        ) == "healthy":
 
-    # --------------------------------------------------------
-    # VERIFY SERVICE AFTER START
-    # --------------------------------------------------------
-
-    new_status = get_service_status(
-        service_name
-    )
-
-
-    new_port_status = diagnose_service(
-        service_name
-    )
-
-
-    # --------------------------------------------------------
-    # SUCCESS
-    # --------------------------------------------------------
-
-    if new_status.get("status") == "healthy":
-
-        return {
-            "service": service_name,
-            "status": "started",
-            "process_id": process.pid,
-            "message": (
-                "Service was started successfully "
-                "and passed the health check."
-            ),
-            "health": new_status,
-            "port_diagnosis": new_port_status,
-        }
-
-
-    # --------------------------------------------------------
-    # PROCESS STARTED BUT SERVICE NOT HEALTHY
-    # --------------------------------------------------------
+            return {
+                "service": service_name,
+                "status": "started",
+                "process_id": process.pid,
+                "health": status,
+            }
 
     return {
         "service": service_name,
         "status": "start_attempt_failed",
         "process_id": process.pid,
-        "message": (
-            "A start attempt was made, but the "
-            "service did not become healthy."
+        "health": get_service_status(
+            service_name
         ),
-        "health": new_status,
-        "port_diagnosis": new_port_status,
     }
 
 
-# ============================================================
-# DIRECT COMMAND-LINE TEST
-# ============================================================
+def stop_service(
+    service_name
+):
 
-if __name__ == "__main__":
+    if service_name not in SERVICE_ACTION_CONFIG:
 
-    print(
-        "=" * 60
+        return {
+            "service": service_name,
+            "status": "denied",
+            "error": "Service is not approved.",
+        }
+
+    pid_file = get_pid_file(
+        service_name
     )
 
-    print(
-        "Controlled Service Startup Test"
+    if not pid_file.exists():
+
+        current = get_service_status(
+            service_name
+        )
+
+        if current.get(
+            "status"
+        ) != "healthy":
+
+            return {
+                "service": service_name,
+                "status": "already_stopped",
+                "message": (
+                    "Service is already stopped."
+                ),
+            }
+
+        return {
+            "service": service_name,
+            "status": "not_managed",
+            "message": (
+                "The service is running, but it was not "
+                "started by the SRE service runner. "
+                "It will not be terminated for safety."
+            ),
+        }
+
+    try:
+
+        pid = int(
+            pid_file
+            .read_text()
+            .strip()
+        )
+
+    except Exception:
+
+        return {
+            "service": service_name,
+            "status": "failed",
+            "error": "Invalid PID file.",
+        }
+
+    try:
+
+        parent = psutil.Process(
+            pid
+        )
+
+    except psutil.NoSuchProcess:
+
+        try:
+            pid_file.unlink()
+        except Exception:
+            pass
+
+        return {
+            "service": service_name,
+            "status": "already_stopped",
+        }
+
+    children = parent.children(
+        recursive=True
     )
 
-    print(
-        "=" * 60
+    # Stop child processes first.
+    for child in reversed(
+        children
+    ):
+
+        try:
+            child.terminate()
+
+        except psutil.Error:
+            pass
+
+    _, alive = psutil.wait_procs(
+        children,
+        timeout=4,
     )
 
-    print()
+    for child in alive:
 
-    service = input(
-        "Service name: "
-    ).strip()
+        try:
+            child.kill()
 
+        except psutil.Error:
+            pass
 
-    result = start_service(
-        service
-    )
+    try:
+        parent.terminate()
+        parent.wait(
+            timeout=3
+        )
 
+    except psutil.TimeoutExpired:
 
-    print()
+        try:
+            parent.kill()
+        except psutil.Error:
+            pass
 
-    print(
-        result
-    )
+    except psutil.Error:
+        pass
+
+    try:
+
+        if pid_file.exists():
+            pid_file.unlink()
+
+    except Exception:
+        pass
+
+    # Verify service actually went down.
+    for _ in range(8):
+
+        time.sleep(
+            0.5
+        )
+
+        status = get_service_status(
+            service_name
+        )
+
+        port = diagnose_service(
+            service_name
+        )
+
+        if (
+            status.get("status")
+            != "healthy"
+            and
+            port.get("port_status")
+            == "closed"
+        ):
+
+            return {
+                "service": service_name,
+                "status": "stopped",
+                "message": (
+                    "Service stopped successfully."
+                ),
+            }
+
+    return {
+        "service": service_name,
+        "status": "stop_incomplete",
+        "health": get_service_status(
+            service_name
+        ),
+        "port": diagnose_service(
+            service_name
+        ),
+    }

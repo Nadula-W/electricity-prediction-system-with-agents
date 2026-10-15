@@ -1,56 +1,76 @@
-import argparse
-import subprocess
+import os
 import sys
+import subprocess
 from pathlib import Path
 
+import psutil
 
-# ============================================================
-# PROJECT PATHS
-# ============================================================
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
-SERVICES_ROOT = (
-    PROJECT_ROOT
-    / "sources"
-    / "smart-electricity-system"
-)
+LOG_DIR = PROJECT_ROOT / "logs"
+RUNTIME_DIR = PROJECT_ROOT / "runtime"
 
-LOGS_ROOT = PROJECT_ROOT / "logs"
+LOG_DIR.mkdir(exist_ok=True)
+RUNTIME_DIR.mkdir(exist_ok=True)
 
-
-# ============================================================
-# SERVICE CONFIGURATION
-# ============================================================
 
 SERVICE_CONFIG = {
 
     "meter": {
-        "name": "meter-data-service",
-        "directory": SERVICES_ROOT / "meter-data-service",
-        "command": ["node", "server.js"],
+        "service_name": "meter-data-service",
+        "cwd": (
+            PROJECT_ROOT
+            / "sources"
+            / "smart-electricity-system"
+            / "meter-data-service"
+        ),
+        "command": [
+            "node",
+            "server.js",
+        ],
     },
 
     "billing": {
-        "name": "billing-service",
-        "directory": SERVICES_ROOT / "billing-service",
-        "command": ["node", "app.js"],
+        "service_name": "billing-service",
+        "cwd": (
+            PROJECT_ROOT
+            / "sources"
+            / "smart-electricity-system"
+            / "billing-service"
+        ),
+        "command": [
+            "node",
+            "app.js",
+        ],
     },
 
     "prediction": {
-        "name": "prediction-service",
-        "directory": (
-            SERVICES_ROOT
+        "service_name": "prediction-service",
+        "cwd": (
+            PROJECT_ROOT
+            / "sources"
+            / "smart-electricity-system"
             / "prediciton-service"
             / "prediction-service"
         ),
-        "command": ["node", "app.js"],
+        "command": [
+            "node",
+            "app.js",
+        ],
     },
 
     "user": {
-        "name": "user-service",
-        "directory": SERVICES_ROOT / "user-service",
+        "service_name": "user-service",
+        "cwd": (
+            PROJECT_ROOT
+            / "sources"
+            / "smart-electricity-system"
+            / "user-service"
+        ),
         "command": [
+            "cmd",
+            "/c",
             "mvn",
             "spring-boot:run",
         ],
@@ -58,260 +78,194 @@ SERVICE_CONFIG = {
 }
 
 
-# ============================================================
-# RUN SERVICE AND SAVE OUTPUT
-# ============================================================
+def terminate_tree(pid):
 
-def run_service(service_key):
+    try:
+        process = psutil.Process(pid)
 
-    if service_key not in SERVICE_CONFIG:
+    except psutil.NoSuchProcess:
+        return
 
-        print(
-            f"Unknown service: {service_key}"
-        )
-
-        print(
-            "Available services:",
-            ", ".join(SERVICE_CONFIG.keys())
-        )
-
-        sys.exit(1)
-
-    service = SERVICE_CONFIG[service_key]
-
-    service_name = service["name"]
-
-    service_directory = service["directory"]
-
-    command = service["command"]
-
-
-    # --------------------------------------------------------
-    # CHECK SERVICE DIRECTORY
-    # --------------------------------------------------------
-
-    if not service_directory.exists():
-
-        print(
-            f"Service directory not found:"
-        )
-
-        print(
-            service_directory
-        )
-
-        sys.exit(1)
-
-
-    # --------------------------------------------------------
-    # CREATE LOGS DIRECTORY
-    # --------------------------------------------------------
-
-    LOGS_ROOT.mkdir(
-        parents=True,
-        exist_ok=True
+    children = process.children(
+        recursive=True
     )
 
+    for child in children:
 
-    # --------------------------------------------------------
-    # LOG FILE
-    # --------------------------------------------------------
+        try:
+            child.terminate()
 
-    log_file = (
-        LOGS_ROOT
+        except psutil.Error:
+            pass
+
+    psutil.wait_procs(
+        children,
+        timeout=3
+    )
+
+    for child in children:
+
+        try:
+
+            if child.is_running():
+                child.kill()
+
+        except psutil.Error:
+            pass
+
+    try:
+        process.terminate()
+
+    except psutil.Error:
+        pass
+
+
+def run_service(key):
+
+    if key not in SERVICE_CONFIG:
+
+        print(
+            f"Unknown service: {key}"
+        )
+
+        sys.exit(1)
+
+    config = SERVICE_CONFIG[key]
+
+    service_name = config[
+        "service_name"
+    ]
+
+    cwd = config[
+        "cwd"
+    ]
+
+    command = config[
+        "command"
+    ]
+
+    log_path = (
+        LOG_DIR
         / f"{service_name}.log"
     )
 
-
-    print("=" * 60)
-    print(
-        f"Starting {service_name}"
-    )
-    print("=" * 60)
-
-    print(
-        f"Directory: {service_directory}"
+    pid_path = (
+        RUNTIME_DIR
+        / f"{service_name}.pid"
     )
 
-    print(
-        "Command:",
-        " ".join(command)
+    pid_path.write_text(
+        str(os.getpid()),
+        encoding="utf-8",
     )
 
-    print(
-        f"Log file: {log_file}"
-    )
-
-    print("=" * 60)
-    print()
-
-
-    # --------------------------------------------------------
-    # START SERVICE
-    # --------------------------------------------------------
-
-    try:
-
-        process = subprocess.Popen(
-            command,
-            cwd=service_directory,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            text=True,
-            bufsize=1,
-            shell=False,
-        )
-
-    except FileNotFoundError as error:
-
-        print(
-            "Could not start service."
-        )
-
-        print(
-            f"Command not found: {command[0]}"
-        )
-
-        print(
-            error
-        )
-
-        sys.exit(1)
-
-    except Exception as error:
-
-        print(
-            "Could not start service."
-        )
-
-        print(
-            error
-        )
-
-        sys.exit(1)
-
-
-    # --------------------------------------------------------
-    # READ OUTPUT
-    #
-    # Every line is:
-    #
-    # 1. displayed in the CMD window
-    # 2. written to the log file
-    # --------------------------------------------------------
+    child = None
 
     try:
 
         with open(
-            log_file,
+            log_path,
             "a",
             encoding="utf-8",
-            errors="replace"
-        ) as log:
+            errors="replace",
+        ) as log_file:
 
-            log.write(
+            header = (
                 "\n"
+                + "=" * 60
+                + "\n"
+                + f"STARTING {service_name}"
+                + "\n"
                 + "=" * 60
                 + "\n"
             )
 
-            log.write(
-                f"STARTING {service_name}\n"
+            print(
+                header,
+                end=""
             )
 
-            log.write(
-                "=" * 60
-                + "\n"
+            log_file.write(
+                header
             )
 
-            log.flush()
+            log_file.flush()
 
+            child = subprocess.Popen(
+                command,
+                cwd=str(cwd),
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                bufsize=1,
+                env=os.environ.copy(),
+            )
 
-            for line in process.stdout:
+            for line in child.stdout:
 
-                # Display live output
                 print(
                     line,
                     end=""
                 )
 
-                # Save same output
-                log.write(
+                log_file.write(
                     line
                 )
 
-                log.flush()
+                log_file.flush()
 
+            child.wait()
 
     except KeyboardInterrupt:
 
-        print()
         print(
-            f"Stopping {service_name}..."
+            f"\nStopping {service_name}..."
         )
-
-        process.terminate()
-
 
     finally:
 
+        if child is not None:
+
+            try:
+                terminate_tree(
+                    child.pid
+                )
+
+            except Exception:
+                pass
+
         try:
 
-            process.wait(
-                timeout=5
-            )
+            if pid_path.exists():
 
-        except subprocess.TimeoutExpired:
+                stored_pid = (
+                    pid_path
+                    .read_text()
+                    .strip()
+                )
 
-            process.kill()
+                if stored_pid == str(
+                    os.getpid()
+                ):
+                    pid_path.unlink()
 
+        except Exception:
+            pass
 
-    print()
-
-    print(
-        f"{service_name} stopped."
-    )
-
-    print(
-        f"Exit code: {process.returncode}"
-    )
-
-
-# ============================================================
-# COMMAND-LINE ARGUMENT
-# ============================================================
-
-def main():
-
-    parser = argparse.ArgumentParser(
-        description=(
-            "Start one Smart Electricity service "
-            "and save its console output."
-        )
-    )
-
-    parser.add_argument(
-        "service",
-        choices=[
-            "meter",
-            "billing",
-            "prediction",
-            "user",
-        ],
-        help="Service to start"
-    )
-
-    args = parser.parse_args()
-
-    run_service(
-        args.service
-    )
-
-
-# ============================================================
-# PROGRAM ENTRY POINT
-# ============================================================
 
 if __name__ == "__main__":
 
-    main()
+    if len(sys.argv) != 2:
+
+        print(
+            "Usage: python scripts/run_service.py "
+            "<meter|billing|prediction|user>"
+        )
+
+        sys.exit(1)
+
+    run_service(
+        sys.argv[1]
+    )
