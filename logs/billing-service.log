@@ -1,0 +1,9 @@
+
+============================================================
+STARTING billing-service
+============================================================
+â—‡ injected env (5) from .env // tip: â—ˆ encrypted .env [www.dotenvx.com]
+â—‡ injected env (0) from .env // tip: â—ˆ encrypted .env [www.dotenvx.com]
+RabbitMQ connection failed, starting without messaging: 
+Billing Service running on port 3001
+Billing DB connected

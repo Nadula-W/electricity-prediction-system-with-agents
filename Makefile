@@ -1,10 +1,10 @@
-ROOT := E:/CeyTech Labs/electricity prediction system with agents/sources/smart-electricity-system
+ROOT := E:/CeyTech Labs/electricity prediction system with agents
 
-.PHONY: start meter billing prediction user agent
+.PHONY: start meter billing prediction user agent health
 
 
 # ============================================================
-# START ALL SERVICES
+# START ALL 4 SERVICES
 # ============================================================
 
 start:
@@ -16,54 +16,62 @@ start:
 	@$(MAKE) prediction
 	@$(MAKE) user
 	@echo.
-	@echo All four services have been launched.
+	@echo ============================================================
+	@echo All 4 services have been launched.
+	@echo ============================================================
 	@echo.
-	@echo Meter Data : http://localhost:3000
-	@echo Billing    : http://localhost:3001
-	@echo Prediction : http://localhost:3002
-	@echo User       : http://localhost:8081
+	@echo Logs will be stored inside:
+	@echo $(ROOT)/logs
+	@echo.
 
 
 # ============================================================
-# METER DATA SERVICE - PORT 3000
+# METER DATA SERVICE
 # ============================================================
 
 meter:
 	@echo Starting Meter Data Service...
-	@cmd /c start "Meter Data Service - 3000" /D "$(ROOT)/meter-data-service" cmd /k "node server.js"
+	@cmd /c start "Meter Data Service - 3000" /D "$(ROOT)" cmd /k "python scripts/run_service.py meter"
 
 
 # ============================================================
-# BILLING SERVICE - PORT 3001
+# BILLING SERVICE
 # ============================================================
 
 billing:
 	@echo Starting Billing Service...
-	@cmd /c start "Billing Service - 3001" /D "$(ROOT)/billing-service" cmd /k "node app.js"
+	@cmd /c start "Billing Service - 3001" /D "$(ROOT)" cmd /k "python scripts/run_service.py billing"
 
 
 # ============================================================
-# PREDICTION SERVICE - PORT 3002
+# PREDICTION SERVICE
 # ============================================================
 
 prediction:
 	@echo Starting Prediction Service...
-	@cmd /c start "Prediction Service - 3002" /D "$(ROOT)/prediciton-service/prediction-service" cmd /k "node app.js"
+	@cmd /c start "Prediction Service - 3002" /D "$(ROOT)" cmd /k "python scripts/run_service.py prediction"
 
 
 # ============================================================
-# USER SERVICE - PORT 8081
+# USER SERVICE
 # ============================================================
 
 user:
 	@echo Starting User Service...
-	@cmd /c start "User Service - 8081" /D "$(ROOT)/user-service" cmd /k "mvn spring-boot:run"
+	@cmd /c start "User Service - 8081" /D "$(ROOT)" cmd /k "python scripts/run_service.py user"
 
 
 # ============================================================
-# RUN PYTHON AI SRE AGENT
+# RUN AI SRE AGENT
 # ============================================================
 
 agent:
-	@echo Starting AI SRE Incident Agent...
+	@python main.py
+	
+
+# ============================================================
+# SAME AS AGENT
+# ============================================================
+
+health:
 	@python main.py
