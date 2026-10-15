@@ -6,58 +6,244 @@ from agent.tools import (
     diagnose_service,
 )
 
+from agent.sre_agent import run_sre_agent
+
+
+# ============================================================
+# DISPLAY TITLE
+# ============================================================
 
 def print_title(title):
-    print("\n" + "=" * 60)
+
+    print()
+    print("=" * 60)
     print(title)
     print("=" * 60)
+    print()
 
 
-def main():
+# ============================================================
+# NORMAL NON-AI HEALTH CHECK
+# ============================================================
 
-    print_title("AI SRE Incident Agent")
+def run_manual_health_check():
+    """
+    Run the original deterministic health check.
 
-    # ---------------------------------------------------------
-    # STEP 1
-    # Get all services configured in agent/tools.py
-    # ---------------------------------------------------------
+    This does NOT use the LLM.
+
+    It directly calls our Python monitoring tools.
+    """
+
+    print_title(
+        "Smart Electricity System - Manual Health Check"
+    )
 
     services_result = list_services()
 
-    print("\nConfigured Services:")
-    print(json.dumps(services_result, indent=2))
-
-    services = services_result.get("services", [])
-
-    # ---------------------------------------------------------
-    # STEP 2
-    # Check health of every service
-    # ---------------------------------------------------------
-
-    print_title("Service Health")
+    services = services_result.get(
+        "services",
+        []
+    )
 
     for service_name in services:
 
-        status_result = get_service_status(service_name)
+        result = get_service_status(
+            service_name
+        )
 
-        print(json.dumps(status_result, indent=2))
+        print(
+            json.dumps(
+                result,
+                indent=2
+            )
+        )
 
-        # -----------------------------------------------------
-        # STEP 3
-        # If the service is not healthy,
-        # perform another investigation.
-        # -----------------------------------------------------
+        # If something is wrong,
+        # perform our normal port diagnosis.
 
-        if status_result.get("status") != "healthy":
+        if result.get("status") != "healthy":
 
-            print("\nInvestigation:")
+            print()
+            print("Investigation:")
 
-            diagnosis_result = diagnose_service(service_name)
+            diagnosis = diagnose_service(
+                service_name
+            )
 
-            print(json.dumps(diagnosis_result, indent=2))
+            print(
+                json.dumps(
+                    diagnosis,
+                    indent=2
+                )
+            )
 
         print("-" * 60)
 
 
+# ============================================================
+# AI SRE INTERACTIVE MODE
+# ============================================================
+
+def run_ai_mode():
+    """
+    Start an interactive command-line conversation
+    with the LangChain SRE agent.
+    """
+
+    print_title(
+        "AI SRE Incident Agent"
+    )
+
+    print(
+        "The AI can investigate the Smart Electricity System."
+    )
+
+    print()
+
+    print(
+        "Example commands:"
+    )
+
+    print(
+        "  Investigate the whole system"
+    )
+
+    print(
+        "  Check billing-service"
+    )
+
+    print(
+        "  Is prediction-service healthy?"
+    )
+
+    print(
+        "  Investigate why billing-service is unavailable"
+    )
+
+    print()
+
+    print(
+        "Type 'health' for the normal non-AI health check."
+    )
+
+    print(
+        "Type 'exit' to close the program."
+    )
+
+    print()
+
+    # --------------------------------------------------------
+    # INTERACTIVE LOOP
+    # --------------------------------------------------------
+
+    while True:
+
+        try:
+
+            user_input = input(
+                "You: "
+            ).strip()
+
+        except KeyboardInterrupt:
+
+            print()
+            print("Exiting AI SRE Agent.")
+            break
+
+        # ----------------------------------------------------
+        # EMPTY INPUT
+        # ----------------------------------------------------
+
+        if not user_input:
+
+            continue
+
+        # ----------------------------------------------------
+        # EXIT
+        # ----------------------------------------------------
+
+        if user_input.lower() in [
+            "exit",
+            "quit",
+            "bye"
+        ]:
+
+            print()
+            print(
+                "AI SRE Agent stopped."
+            )
+
+            break
+
+        # ----------------------------------------------------
+        # MANUAL HEALTH CHECK
+        # ----------------------------------------------------
+
+        if user_input.lower() == "health":
+
+            run_manual_health_check()
+
+            print()
+
+            continue
+
+        # ----------------------------------------------------
+        # SEND REQUEST TO LANGCHAIN AGENT
+        # ----------------------------------------------------
+
+        print()
+        print(
+            "SRE Agent is investigating..."
+        )
+        print()
+
+        try:
+
+            response = run_sre_agent(
+                user_input
+            )
+
+            print(
+                "SRE Agent:"
+            )
+
+            print()
+
+            print(
+                response
+            )
+
+            print()
+
+        except Exception as error:
+
+            print(
+                "The SRE Agent encountered an error."
+            )
+
+            print()
+
+            print(
+                error
+            )
+
+            print()
+
+
+# ============================================================
+# MAIN PROGRAM
+# ============================================================
+
+def main():
+
+    run_ai_mode()
+
+
+# ============================================================
+# PROGRAM ENTRY POINT
+# ============================================================
+
 if __name__ == "__main__":
+
     main()
