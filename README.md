@@ -1,25 +1,76 @@
-# AI SRE Incident Agent
+# AI SRE Incident Agent for Smart Electricity System
 
-An autonomous AI agent designed to investigate failures in a microservice-based Smart Electricity System.
+An agentic AI-based Site Reliability Engineering (SRE) assistant that monitors, investigates, and explains incidents in a Smart Electricity microservice environment.
 
-The agent will be able to inspect:
+The project combines:
 
-- service health
-- application logs
-- service dependencies
-- runtime configuration
-- recent deployments
-- GitHub changes
+- Real microservices
+- Python diagnostic tools
+- LangChain tool calling
+- OpenRouter-hosted LLMs
+- Service health monitoring
+- TCP/port diagnostics
+- Log analysis
+- Dependency checking
+- Real MySQL authentication testing
+- AI-assisted incident investigation
 
-The goal is for the AI agent to investigate an incident autonomously, collect evidence, identify the probable root cause, and produce an incident report.
+The agent is currently **read-only**. It can investigate problems and recommend actions, but it does not automatically restart services or modify system configuration.
 
-## Target System
+---
 
-The initial target environment is:
+# 1. Project Overview
 
-Smart Electricity System  
-https://github.com/Nadula-W/smart-electricity-system
+The Smart Electricity System consists of several independent microservices.
 
-## Status
+The AI SRE Incident Agent sits outside those services and monitors them.
 
-🚧 Currently under development.
+Instead of asking an LLM to guess what is wrong, the agent is provided with real diagnostic tools.
+
+The AI decides which tools it needs to use based on the problem being investigated.
+
+Example:
+
+```text
+User:
+Investigate the whole system
+
+        ↓
+
+LangChain SRE Agent
+
+        ↓
+
+Check all services
+
+        ↓
+
+Billing Service unreachable
+
+        ↓
+
+Check Billing port
+
+        ↓
+
+Port 3001 closed
+
+        ↓
+
+Read Billing logs
+
+        ↓
+
+Check Billing dependencies
+
+        ↓
+
+Test MySQL authentication
+
+        ↓
+
+Correlate all evidence
+
+        ↓
+
+Generate incident report

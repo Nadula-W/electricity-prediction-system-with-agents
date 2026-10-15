@@ -11,6 +11,10 @@ from agent.tools import (
     check_mysql_database,
 )
 
+from agent.actions import (
+    start_service,
+)
+
 
 # ============================================================
 # LANGCHAIN TOOL 1
@@ -24,8 +28,10 @@ def sre_list_services() -> str:
     configured for monitoring.
     """
 
+    result = list_services()
+
     return json.dumps(
-        list_services(),
+        result,
         indent=2
     )
 
@@ -42,12 +48,21 @@ def sre_check_service(
     """
     Check the current HTTP health of one
     Smart Electricity microservice.
+
+    Example service names:
+
+    - meter-data-service
+    - billing-service
+    - prediction-service
+    - user-service
     """
 
+    result = get_service_status(
+        service_name
+    )
+
     return json.dumps(
-        get_service_status(
-            service_name
-        ),
+        result,
         indent=2
     )
 
@@ -62,21 +77,26 @@ def sre_diagnose_service(
     service_name: str
 ) -> str:
     """
-    Check whether the TCP port of a service
+    Check whether the TCP port of a microservice
     is currently open or closed.
+
+    Use this when a service is unhealthy
+    or unreachable.
     """
 
+    result = diagnose_service(
+        service_name
+    )
+
     return json.dumps(
-        diagnose_service(
-            service_name
-        ),
+        result,
         indent=2
     )
 
 
 # ============================================================
 # LANGCHAIN TOOL 4
-# READ LOGS
+# READ SERVICE LOGS
 # ============================================================
 
 @tool
@@ -85,17 +105,27 @@ def sre_get_service_logs(
     lines: int = 80
 ) -> str:
     """
-    Read recent sanitized logs for a service.
+    Read recent sanitized application logs.
 
-    Useful when a service is unhealthy,
-    unreachable, crashed, or suspicious.
+    Use this when a service is:
+
+    - unhealthy
+    - unreachable
+    - crashed
+    - suspicious
+    - failing during startup
+
+    The tool returns only recent log lines
+    and attempts to remove sensitive values.
     """
 
+    result = get_service_logs(
+        service_name,
+        lines
+    )
+
     return json.dumps(
-        get_service_logs(
-            service_name,
-            lines
-        ),
+        result,
         indent=2
     )
 
@@ -110,24 +140,33 @@ def sre_check_dependencies(
     service_name: str
 ) -> str:
     """
-    Check known required and optional runtime
-    dependencies for one service.
+    Check known required and optional dependencies
+    for one service.
 
-    This includes infrastructure TCP checks
-    and dependent microservice health checks.
+    Possible dependencies include:
+
+    - MySQL
+    - MongoDB
+    - RabbitMQ
+    - another microservice
+
+    Required and optional failures are reported
+    separately.
     """
 
+    result = check_service_dependencies(
+        service_name
+    )
+
     return json.dumps(
-        check_service_dependencies(
-            service_name
-        ),
+        result,
         indent=2
     )
 
 
 # ============================================================
 # LANGCHAIN TOOL 6
-# REAL MYSQL CHECK
+# REAL MYSQL TEST
 # ============================================================
 
 @tool
@@ -135,36 +174,86 @@ def sre_check_mysql_database(
     service_name: str
 ) -> str:
     """
-    Perform a real MySQL authentication and query test
-    for a MySQL-backed service.
+    Perform a real MySQL connection test for a
+    MySQL-backed service.
 
-    This verifies:
+    This checks:
 
-    - MySQL server connectivity
+    - MySQL network connectivity
     - username/password authentication
     - target database access
-    - execution of SELECT 1
+    - SELECT 1 execution
 
     Use this when:
 
-    - logs indicate a database problem
-    - MySQL port is reachable but the application fails
-    - database authentication is suspected
-    - the user asks whether a service can actually use MySQL
+    - database problems are suspected
+    - MySQL port is reachable but the app fails
+    - logs contain database errors
+    - the affected service uses MySQL
 
-    No password is returned by this tool.
+    The database password is never returned.
     """
 
+    result = check_mysql_database(
+        service_name
+    )
+
     return json.dumps(
-        check_mysql_database(
-            service_name
-        ),
+        result,
         indent=2
     )
 
 
 # ============================================================
-# TOOLS AVAILABLE TO AI
+# LANGCHAIN TOOL 7
+# START / RECOVER SERVICE
+# ============================================================
+
+@tool
+def sre_start_service(
+    service_name: str
+) -> str:
+    """
+    Start one approved Smart Electricity microservice.
+
+    This is a CONTROLLED recovery action.
+
+    Allowed services:
+
+    - meter-data-service
+    - billing-service
+    - prediction-service
+    - user-service
+
+    Use this only when investigation shows that:
+
+    - the service is unhealthy or unreachable
+    - its service port is closed
+    - the process appears to be stopped
+    - required dependencies are available
+
+    The action automatically:
+
+    - prevents duplicate service processes
+    - starts the service using run_service.py
+    - preserves application logging
+    - waits for startup
+    - performs a health check
+    - returns whether recovery succeeded
+    """
+
+    result = start_service(
+        service_name
+    )
+
+    return json.dumps(
+        result,
+        indent=2
+    )
+
+
+# ============================================================
+# TOOLS AVAILABLE TO THE AI AGENT
 # ============================================================
 
 SRE_TOOLS = [
@@ -180,4 +269,6 @@ SRE_TOOLS = [
     sre_check_dependencies,
 
     sre_check_mysql_database,
+
+    sre_start_service,
 ]
